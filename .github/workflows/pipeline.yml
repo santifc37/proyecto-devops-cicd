@@ -1,0 +1,60 @@
+name: Pipeline CI-CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  # ETAPA 1: INTEGRACION CONTINUA (CI)
+  integracion:
+    name: Validar aplicacion
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Verificar existencia del HTML
+        run: test -f index.html
+
+      - name: Validar estructura HTML
+        run: |
+          grep -qi "<html" index.html
+          grep -qi "</html>" index.html
+          grep -qi "<body" index.html
+          echo "Validacion exitosa"
+
+  # ETAPA 2: DESPLIEGUE CONTINUO (CD)
+  despliegue:
+    name: Publicar aplicacion
+    needs: integracion
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Preparar archivos para publicar
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Desplegar aplicacion
+        id: deployment
+        uses: actions/deploy-pages@v4
